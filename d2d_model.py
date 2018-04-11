@@ -6,23 +6,13 @@ import tensorflow as tf
 from preprocess import data_index,name_id
 from tensorflow.contrib.rnn import LSTMCell
 
-class Config:
-	"""Holds model hyperparams and data information.
-
-    The config class is used to store various hyperparameters and dataset
-    information parameters. Model objects are passed a Config() object at
-    instantiation.
-    """
-    dataset="FB15k"
-
 
 class D2dmodel(object):
 	"""docstring for d2dmodel"""
-	def __init__(self, embedding_dim=100,epochs=100,
-		is_training=True,init_lr=0.001,lstm_dim=3,entity_num,relation_num,keep_prob=0.75):
+	def __init__(self, entity_num,relation_num,embedding_dim=100,
+		is_training=True,init_lr=0.001,lstm_dim=3,keep_prob=0.75):
 		"""
 		embedding_dim:lstm unit个数
-		epochs:训练轮数
 		is_training:是否训练状态
 		init_lr:初始learning rate
 		lstm_dim:LSTM层维度
@@ -65,7 +55,7 @@ class D2dmodel(object):
 			return
 
 		global_step=tf.Variable(0)
-        learning_rate = tf.train.exponential_decay(init_lr, global_step, npochos*100, 0.98, staircase=True)
+		learning_rate = tf.train.exponential_decay(init_lr, global_step, npochos*100, 0.98, staircase=True)
 
 		optimizer=tf.train.RMSPropOptimizer(learning_rate)
 		self._train_op=optimizer.minimize(loss)
@@ -97,6 +87,13 @@ class D2dmodel(object):
 		
 
 def get_train_batch(inputE,inputR,inputY,batchsize,shuffle=True):
+	"""
+	inputE:实体对
+	inputR:实体对对应的relation
+	inputY:三元组的score
+	batchsize:batch大小
+	shuffle:打乱数据集
+	"""
 	assert len(inputE) == len(inputY)
 	assert len(inputR) == len(inputY)
 	indices=np.arange(len(inputY))
@@ -114,8 +111,36 @@ def get_train_batch(inputE,inputR,inputY,batchsize,shuffle=True):
 		yield e,r,y
 
 
+def test_model(model,session,epoch,flag="test on testdata"):
+	print(flag)
+	e2id=name_id()
+	r2id=name_id(file='relation')
+	e_test,r_test,y_test=data_index(file="test")
+	e_test=np.asarray(e_test,dtype="int32")
+	r_test=np.asarray(r_test,dtype="int32")
+	y_test=np.asarray(y_test,dtype="int32")
 
-def train_model():
+
+def train_model(epochs=100,batchsize=50):
+	"""
+	epochs:训练轮数
+	"""
 	e2id=name_id()
 	r2id=name_id(file='relation')
 	e_train,r_train,y_train=data_index()
+	e_train=np.asarray(e_train,dtype="int32")
+	r_train=np.asarray(r_train,dtype="int32")
+	y_train=np.asarray(y_train,dtype="int32")
+
+	with tf.Session() as sess:
+		with tf.Variable_scope("d2dmodel",reuse=None):
+			model=D2dmodel(entity_num=e_train.shape[0],relation_num=r_train.shape[0])
+		with tf.Variable_scope("d2dmodel",reuse=True):
+			model_test=D2dmodel(entity_num=e_train.shape[0],relation_num=r_train.shape[0],is_training=False)
+		sess.run(tf.global_variables_initializer())
+		for epoch in range(epochs):
+			print("epoch:{}".format(epoch))
+			for e_data,r_data,y_data in get_train_batch(e_train,r_train,y_train,50):
+				model.train_step.run(feed_dict={model.inputE:e_data,model.inputR:r_train,model.y_label})
+				value=m.loss.eval(feed_dict={model.inputE:e_data,model.inputR:r_train,model.y_label})
+				print('loss: {}'.format(value))
