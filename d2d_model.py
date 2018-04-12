@@ -13,9 +13,10 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 class D2dmodel(object):
 	"""docstring for d2dmodel"""
-	def __init__(self, entity_num,relation_num,embedding_dim=100,
+	def __init__(self, entity_num,relation_num,embedding_dim=100,epochs=100,
 		is_training=True,init_lr=0.001,lstm_dim=3,keep_prob=0.75):
 		"""
+		epochs:训练轮数
 		embedding_dim:lstm unit个数
 		is_training:是否训练状态
 		init_lr:初始learning rate
@@ -26,7 +27,7 @@ class D2dmodel(object):
 		num_steps=embedding_dim
 		self._inputE=tf.placeholder(tf.int32,[None,2])
 		self._inputR=tf.placeholder(tf.int32,[None,1])
-		self._y_label=tf.placeholder(tf.float32,[None,2])
+		self._y_label=tf.placeholder(tf.int32,[None])
 
 		#embedding layer
 		with tf.device('/cpu:0'):
@@ -37,56 +38,56 @@ class D2dmodel(object):
 		if is_training and keep_prob<1.0:
 			e_embedding_output=tf.nn.dropout(e_embedding_output,1-keep_prob)
 			r_embedding_output=tf.nn.dropout(r_embedding_output,1-keep_prob)
-
+		
 		#LSTM layer
-		LSTM_inputE=tf.split(tf.transpose(e_embedding_output,[0,2,1]),[1,1],1)
+		LSTM_inputE=tf.split(tf.transpose(e_embedding_output,[0,2,1]),[1,1],2)
 		LSTM_inputR=tf.transpose(r_embedding_output,[0,2,1])
-		LSTM_input=tf.concat([LSTM_inputE[0],LSTM_inputR,LSTM_inputE[1]],1)
+		LSTM_input=tf.concat([LSTM_inputE[0],LSTM_inputR,LSTM_inputE[1]],2)
 		LSTM=LSTMCell(lstm_dim,initializer=tf.random_uniform_initializer(-0.01, 0.01), forget_bias=0.0)
 		LSTM_output=tf.nn.dynamic_rnn(LSTM,LSTM_input,dtype=tf.float32)[0]
-
+		
 		#softmax layer
-		softmax_input=tf.reshape(LSTM_output,[LSTM_output.shape[0],-1])
+		softmax_input=tf.reshape(LSTM_output,[-1,LSTM_output.shape[1]*LSTM_output.shape[-1]])
 		softmax_W=tf.get_variable('softmax_Weight',[num_steps*lstm_dim,2],initializer=tf.random_uniform_initializer(-0.01, 0.01),dtype=tf.float32)
 		softmax_b=tf.get_variable('softmax_bias',[2],initializer=tf.random_uniform_initializer(-0.01, 0.01),dtype=tf.float32)
 		logits=tf.matmul(softmax_input,softmax_W)+softmax_b
 		y_pre=tf.nn.softmax(logits)
-
+		# pdb.set_trace()
 		self._predictions=y_pre
-		self._loss=loss=tf.losses.softmax_cross_entropy(self._y_label,logits)
+		self._loss=loss=tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self._y_label,logits=logits))
 
 		if not is_training:
 			return
 
 		global_step=tf.Variable(0)
-		learning_rate = tf.train.exponential_decay(init_lr, global_step, npochos*100, 0.98, staircase=True)
+		learning_rate = tf.train.exponential_decay(init_lr, global_step, epochs*100, 0.98, staircase=True)
 
 		optimizer=tf.train.RMSPropOptimizer(learning_rate)
 		self._train_op=optimizer.minimize(loss)
 
-		@property
-		def prediction(self):
-			return self._predictions
+	@property
+	def prediction(self):
+		return self._predictions
 
-		@property
-		def train_step(self):
-			return self._train_op
+	@property
+	def train_step(self):
+		return self._train_op
 
-		@property
-		def loss(self):
-			return self._loss
+	@property
+	def loss(self):
+		return self._loss
 
-		@property
-		def inputE(self):
-			return self._inputE
+	@property
+	def inputE(self):
+		return self._inputE
 
-		@property
-		def inputR(self):
-			return self._inputR
+	@property
+	def inputR(self):
+		return self._inputR
 
-		@property
-		def y_label(self):
-			return self._y_label
+	@property
+	def y_label(self):
+		return self._y_label
 
 		
 
@@ -107,11 +108,11 @@ def get_train_batch(inputE,inputR,inputY,batchsize,shuffle=True):
 		sub_list=indices[start_index:start_index+batchsize]
 		e=np.zeros((batchsize,2)).astype('int32')
 		r=np.zeros((batchsize,1)).astype('int32')
-		y=np.zeros((batchsize,2)).astype('int32')
+		y=np.zeros((batchsize)).astype('int32')
 		for i,index in enumerate(sub_list):
 			e[i,]=inputE[index]
 			r[i,]=inputR[index]
-			y[i,]=inputY[index]
+			y[i]=inputY[index]
 		yield e,r,y
 
 
@@ -119,12 +120,12 @@ def test_model(model,session,epoch,flag="test on testdata"):
 	print(flag)
 	e2id=name_id()
 	r2id=name_id(file='relation')
-	e_test,r_test,y_test=data_index(file="test")
+	e_test,r_test,y_test=data_index(e2id,r2id,file="test")
 	e_test=np.asarray(e_test,dtype="int32")
 	r_test=np.asarray(r_test,dtype="int32")
 	y_test=np.asarray(y_test,dtype="int32")
 
-	predictions=model.predictions.eval(feed_dict={model.inputE:e_test,model.inputR:r_test,model.y_label:y_test})
+	predictions=model.prediction.eval(feed_dict={model.inputE:e_test,model.inputR:r_test,model.y_label:y_test})
 	loss=model.loss.eval(feed_dict={model.inputE:e_test,model.inputR:r_test,model.y_label:y_test})
 
 	print("test loss:{}".format(loss))
@@ -136,24 +137,25 @@ def train_model(epochs=100,batchsize=50):
 	"""
 	e2id=name_id()
 	r2id=name_id(file='relation')
-	e_train,r_train,y_train=data_index()
+	e_train,r_train,y_train=data_index(e2id,r2id)
 	e_train=np.asarray(e_train,dtype="int32")
 	r_train=np.asarray(r_train,dtype="int32")
 	y_train=np.asarray(y_train,dtype="int32")
 
 	with tf.Session() as sess:
-		with tf.Variable_scope("d2dmodel",reuse=None):
-			model=D2dmodel(entity_num=e_train.shape[0],relation_num=r_train.shape[0])
-		with tf.Variable_scope("d2dmodel",reuse=True):
-			model_test=D2dmodel(entity_num=e_train.shape[0],relation_num=r_train.shape[0],is_training=False)
+		with tf.variable_scope("d2dmodel",reuse=None):
+			m=D2dmodel(entity_num=e_train.shape[0],relation_num=r_train.shape[0])
+		with tf.variable_scope("d2dmodel",reuse=True):
+			m_test=D2dmodel(entity_num=e_train.shape[0],relation_num=r_train.shape[0],is_training=False)
 		sess.run(tf.global_variables_initializer())
 		for epoch in range(epochs):
 			print("epoch:{}".format(epoch))
 			for e_data,r_data,y_data in get_train_batch(e_train,r_train,y_train,50):
-				model.train_step.run(feed_dict={model.inputE:e_data,model.inputR:r_train,model.y_label:y_data})
-				value=m.loss.eval(feed_dict={model.inputE:e_data,model.inputR:r_train,model.y_label:y_data})
+				# pdb.set_trace()
+				m.train_step.run(feed_dict={m.inputE:e_data,m.inputR:r_data,m.y_label:y_data})
+				value=m.loss.eval(feed_dict={m.inputE:e_data,m.inputR:r_data,m.y_label:y_data})
 				print('loss: {}'.format(value))
-				test_model(model_test,sess,epoch)
+			test_model(m_test,sess,epoch)
 
 
 if __name__=="__main__":
