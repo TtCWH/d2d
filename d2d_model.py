@@ -8,7 +8,8 @@ import tensorflow as tf
 from preprocess import data_index,name_id
 from tensorflow.contrib.rnn import LSTMCell
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 class D2dmodel(object):
@@ -140,7 +141,7 @@ def train_model(epochs=100,batchsize=50):
 	epochs:训练轮数
 	"""
 	e2id,id2e=name_id()
-	r2id,id2r=name_id(file='relation')[0]
+	r2id,id2r=name_id(file='relation')
 	e_train,r_train,y_train=data_index(e2id,r2id)
 	e_train=np.asarray(e_train,dtype="int32")
 	r_train=np.asarray(r_train,dtype="int32")
@@ -158,8 +159,8 @@ def train_model(epochs=100,batchsize=50):
 				# pdb.set_trace()
 				m.train_step.run(feed_dict={m.inputE:e_data,m.inputR:r_data,m.y_label:y_data})
 				value=m.loss.eval(feed_dict={m.inputE:e_data,m.inputR:r_data,m.y_label:y_data})
-				print('loss: {}'.format(value))
-			test_model(m_test,sess,epoch)
+				# print('loss: {}'.format(value))
+			test_model(e2id,r2id,id2e,id2r,m_test,sess,epoch)
 
 
 if __name__=="__main__":
