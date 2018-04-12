@@ -47,14 +47,14 @@ class D2dmodel(object):
 		LSTM_output=tf.nn.dynamic_rnn(LSTM,LSTM_input,dtype=tf.float32)[0]
 		
 		#softmax layer
-		softmax_input=tf.reshape(LSTM_output,[-1,LSTM_output.shape[1]*LSTM_output.shape[-1]])
+		softmax_input=tf.reshape(LSTM_output,[-1,LSTM_output.get_shape().as_list()[1]*LSTM_output.get_shape().as_list()[-1]])
 		softmax_W=tf.get_variable('softmax_Weight',[num_steps*lstm_dim,2],initializer=tf.random_uniform_initializer(-0.01, 0.01),dtype=tf.float32)
 		softmax_b=tf.get_variable('softmax_bias',[2],initializer=tf.random_uniform_initializer(-0.01, 0.01),dtype=tf.float32)
 		logits=tf.matmul(softmax_input,softmax_W)+softmax_b
 		y_pre=tf.nn.softmax(logits)
 		# pdb.set_trace()
 		self._predictions=y_pre
-		self._loss=loss=tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self._y_label,logits=logits))
+		self._loss=loss=tf.reduce_mean(tf.reduce_sum(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self._y_label,logits=logits)))
 
 		if not is_training:
 			return
@@ -116,10 +116,8 @@ def get_train_batch(inputE,inputR,inputY,batchsize,shuffle=True):
 		yield e,r,y
 
 
-def test_model(model,session,epoch,flag="test on testdata"):
+def test_model(e2id,r2id,id2e,id2r,model,session,epoch,flag="test on testdata"):
 	print(flag)
-	e2id=name_id()
-	r2id=name_id(file='relation')
 	e_test,r_test,y_test=data_index(e2id,r2id,file="test")
 	e_test=np.asarray(e_test,dtype="int32")
 	r_test=np.asarray(r_test,dtype="int32")
@@ -127,16 +125,22 @@ def test_model(model,session,epoch,flag="test on testdata"):
 
 	predictions=model.prediction.eval(feed_dict={model.inputE:e_test,model.inputR:r_test,model.y_label:y_test})
 	loss=model.loss.eval(feed_dict={model.inputE:e_test,model.inputR:r_test,model.y_label:y_test})
+	predictions=tf.argmax(predictions,1)
+	ans=0
+	for i in range(len(predictions)):
+		if predictions[i]==y_test[i]:
+			ans+=1
 
 	print("test loss:{}".format(loss))
+	print("accuray:{}".format(float(ans)/float(len(predictions))))
 
 
 def train_model(epochs=100,batchsize=50):
 	"""
 	epochs:训练轮数
 	"""
-	e2id=name_id()
-	r2id=name_id(file='relation')
+	e2id,id2e=name_id()
+	r2id,id2r=name_id(file='relation')[0]
 	e_train,r_train,y_train=data_index(e2id,r2id)
 	e_train=np.asarray(e_train,dtype="int32")
 	r_train=np.asarray(r_train,dtype="int32")

@@ -3,10 +3,12 @@ __author__ = 'Han Wang'
 
 def name_id(dataset="FB15k",file="entity"): #transform entity or relation to index
 	name2id={}
+	id2name={}
 	with open("{}/{}2id.txt".format(dataset,file)) as f:
 		for _ in f.readlines():
 			name2id[_.split()[0].strip()]=int(_.split()[1].strip())
-	return name2id
+			id2name[int(_.split()[1].strip())]=_.split()[0].strip()
+	return name2id,id2name
 
 def data_index(e2id,r2id,dataset="FB15k",file="train"): #transform dataset to index
 	inputE_index,output_index,inputR_index=[],[],[]
