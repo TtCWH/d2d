@@ -1,10 +1,14 @@
 # -*- encoding:utf-8 -*-
 __author__ = 'Han Wang'
+
+import os
 import pdb
 import numpy as np
 import tensorflow as tf
 from preprocess import data_index,name_id
 from tensorflow.contrib.rnn import LSTMCell
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 class D2dmodel(object):
@@ -120,6 +124,11 @@ def test_model(model,session,epoch,flag="test on testdata"):
 	r_test=np.asarray(r_test,dtype="int32")
 	y_test=np.asarray(y_test,dtype="int32")
 
+	predictions=model.predictions.eval(feed_dict={model.inputE:e_test,model.inputR:r_test,model.y_label:y_test})
+	loss=model.loss.eval(feed_dict={model.inputE:e_test,model.inputR:r_test,model.y_label:y_test})
+
+	print("test loss:{}".format(loss))
+
 
 def train_model(epochs=100,batchsize=50):
 	"""
@@ -141,6 +150,11 @@ def train_model(epochs=100,batchsize=50):
 		for epoch in range(epochs):
 			print("epoch:{}".format(epoch))
 			for e_data,r_data,y_data in get_train_batch(e_train,r_train,y_train,50):
-				model.train_step.run(feed_dict={model.inputE:e_data,model.inputR:r_train,model.y_label})
-				value=m.loss.eval(feed_dict={model.inputE:e_data,model.inputR:r_train,model.y_label})
+				model.train_step.run(feed_dict={model.inputE:e_data,model.inputR:r_train,model.y_label:y_data})
+				value=m.loss.eval(feed_dict={model.inputE:e_data,model.inputR:r_train,model.y_label:y_data})
 				print('loss: {}'.format(value))
+				test_model(model_test,sess,epoch)
+
+
+if __name__=="__main__":
+	train_model()
