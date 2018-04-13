@@ -11,7 +11,7 @@ from tensorflow.contrib.rnn import LSTMCell
 class D2dmodel(object):
 	"""docstring for d2dmodel"""
 	def __init__(self, entity_num,relation_num,embedding_dim=100,epochs=100,
-		is_training=True,init_lr=0.001,lstm_dim=3,keep_prob=0.75):
+		is_training=True,init_lr=0.005,lstm_dim=3,keep_prob=0.75):
 		"""
 		epochs:训练轮数
 		embedding_dim:lstm unit个数
@@ -36,16 +36,19 @@ class D2dmodel(object):
 			self.e_embedding_output=e_embedding_output=tf.nn.dropout(e_embedding_output,1-keep_prob)
 			self.r_embedding_output=r_embedding_output=tf.nn.dropout(r_embedding_output,1-keep_prob)
 		
-		#LSTM layer
+		#biLSTM layer
 		self.LSTM_inputE=LSTM_inputE=tf.split(tf.transpose(e_embedding_output,[0,2,1]),[1,1],2)
 		self.LSTM_inputR=LSTM_inputR=tf.transpose(r_embedding_output,[0,2,1])
 		self.LSTM_input=LSTM_input=tf.concat([LSTM_inputE[0],LSTM_inputR,LSTM_inputE[1]],2)
-		self.LSTM=LSTM=LSTMCell(lstm_dim,initializer=tf.random_uniform_initializer(-0.01, 0.01), forget_bias=0.0)
-		self.LSTM_output=LSTM_output=tf.nn.dynamic_rnn(LSTM,LSTM_input,dtype=tf.float32)[0]
+		self.LSTM_input=LSTM_input=tf.unstack(LSTM_input,axis=1)
+		self.forward_LSTM=forward_LSTM=LSTMCell(lstm_dim,initializer=tf.random_uniform_initializer(-0.01, 0.01), forget_bias=0.0)
+		self.backward_LSTM=backward_LSTM=LSTMCell(lstm_dim,initializer=tf.random_uniform_initializer(-0.01, 0.01), forget_bias=0.0)
+		self.biLSTM_output=biLSTM_output=tf.nn.static_bidirectional_rnn(forward_LSTM,backward_LSTM,LSTM_input,dtype=tf.float32)[0]
 		
 		#softmax layer
-		self.softmax_input=softmax_input=tf.reshape(LSTM_output,[-1,LSTM_output.get_shape().as_list()[1]*LSTM_output.get_shape().as_list()[-1]])
-		self.softmax_W=softmax_W=tf.get_variable('softmax_Weight',[num_steps*lstm_dim,2],initializer=tf.random_uniform_initializer(-0.01, 0.01),dtype=tf.float32)
+		softmax_input=tf.stack(biLSTM_output,axis=1)
+		self.softmax_input=softmax_input=tf.reshape(softmax_input,[-1,softmax_input.get_shape().as_list()[1]*softmax_input.get_shape().as_list()[-1]])
+		self.softmax_W=softmax_W=tf.get_variable('softmax_Weight',[2*num_steps*lstm_dim,2],initializer=tf.random_uniform_initializer(-0.01, 0.01),dtype=tf.float32)
 		self.softmax_b=softmax_b=tf.get_variable('softmax_bias',[2],initializer=tf.random_uniform_initializer(-0.01, 0.01),dtype=tf.float32)
 		logits=tf.matmul(softmax_input,softmax_W)+softmax_b
 		y_pre=tf.nn.softmax(logits)
