@@ -40,13 +40,12 @@ class D2dmodel(object):
 		self.LSTM_inputE=LSTM_inputE=tf.split(tf.transpose(e_embedding_output,[0,2,1]),[1,1],2)
 		self.LSTM_inputR=LSTM_inputR=tf.transpose(r_embedding_output,[0,2,1])
 		self.LSTM_input=LSTM_input=tf.concat([LSTM_inputE[0],LSTM_inputR,LSTM_inputE[1]],2)
-		self.LSTM_input=LSTM_input=tf.unstack(LSTM_input,axis=1)
 		self.forward_LSTM=forward_LSTM=LSTMCell(lstm_dim,initializer=tf.random_uniform_initializer(-0.01, 0.01), forget_bias=0.0)
 		self.backward_LSTM=backward_LSTM=LSTMCell(lstm_dim,initializer=tf.random_uniform_initializer(-0.01, 0.01), forget_bias=0.0)
-		self.biLSTM_output=biLSTM_output=tf.nn.static_bidirectional_rnn(forward_LSTM,backward_LSTM,LSTM_input,dtype=tf.float32)[0]
+		self.biLSTM_output=biLSTM_output=tf.nn.bidirectional_dynamic_rnn(forward_LSTM,backward_LSTM,LSTM_input,sequence_length=self._y_label,dtype=tf.float32)[0]
 		
 		#softmax layer
-		softmax_input=tf.stack(biLSTM_output,axis=1)
+		softmax_input=tf.concat(biLSTM_output,2)
 		self.softmax_input=softmax_input=tf.reshape(softmax_input,[-1,softmax_input.get_shape().as_list()[1]*softmax_input.get_shape().as_list()[-1]])
 		self.softmax_W=softmax_W=tf.get_variable('softmax_Weight',[2*num_steps*lstm_dim,2],initializer=tf.random_uniform_initializer(-0.01, 0.01),dtype=tf.float32)
 		self.softmax_b=softmax_b=tf.get_variable('softmax_bias',[2],initializer=tf.random_uniform_initializer(-0.01, 0.01),dtype=tf.float32)

@@ -3,6 +3,7 @@ __author__ = 'Han Wang'
 
 import os
 import pdb
+import time
 import numpy as np
 import tensorflow as tf
 from preprocess import data_index,name_id
@@ -53,6 +54,9 @@ def test_model(e2id,r2id,id2e,id2r,model,session,epoch,flag="test on testdata"):
 
 	print("test loss:{}".format(loss))
 	print("accuray:{}".format(float(ans)/float(len(predictions))))
+	with open("run.log",'a') as f:
+		f.write("test loss:{}".format(loss)+'\n')
+		f.write("accuray:{}".format(float(ans)/float(len(predictions)))+'\n')
 
 
 def train_model(epochs=100,batchsize=50):
@@ -83,4 +87,7 @@ def train_model(epochs=100,batchsize=50):
 
 
 if __name__=="__main__":
+	with open('run.log','a') as f:
+		f.write("start time : "+time.strftime("%Y-%m-%d %H:%M:%S")+'\n')
+	print(time.strftime("%Y-%m-%d %H:%M:%S"))
 	train_model(batchsize=5000)
