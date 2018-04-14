@@ -107,6 +107,7 @@ def train_model(epochs=100,batchsize=50):
 				value=m.loss.eval(feed_dict={m.inputE:e_data,m.inputR:r_data,m.y_label:y_data})
 				# print('loss: {}'.format(value))
 			test_model(e2id,r2id,id2e,id2r,m_test,sess,epoch)
+			test_model_top(e2id,r2id,id2e,id2r,model,session,epoch)
 
 
 if __name__=="__main__":

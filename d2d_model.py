@@ -11,7 +11,7 @@ from tensorflow.contrib.rnn import LSTMCell
 class D2dmodel(object):
 	"""docstring for d2dmodel"""
 	def __init__(self, entity_num,relation_num,embedding_dim=100,epochs=100,
-		is_training=True,init_lr=0.005,lstm_dim=3,keep_prob=0.75):
+		is_training=True,init_lr=0.005,lstm_dim=6,keep_prob=0.5):
 		"""
 		epochs:训练轮数
 		embedding_dim:lstm unit个数
@@ -44,7 +44,7 @@ class D2dmodel(object):
 		self.LSTM_input=tf.unstack(LSTM_input,num_steps,1)
 		self.forward_LSTM=forward_LSTM=LSTMCell(lstm_dim,initializer=tf.random_uniform_initializer(-0.01, 0.01), forget_bias=0.0)
 		self.backward_LSTM=backward_LSTM=LSTMCell(lstm_dim,initializer=tf.random_uniform_initializer(-0.01, 0.01), forget_bias=0.0)
-		self.biLSTM_output=biLSTM_output=tf.nn.static_bidirectional_rnn(forward_LSTM,backward_LSTM,self.LSTM_input,dtype=tf.float32)[0]
+		self.biLSTM_output=biLSTM_output=tf.contrib.rnn.static_bidirectional_rnn(forward_LSTM,backward_LSTM,self.LSTM_input,dtype=tf.float32)[0]
 		
 		#softmax layer
 		softmax_input=tf.stack(biLSTM_output,axis=1)
