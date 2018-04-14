@@ -3,6 +3,23 @@ __author__ = 'Han Wang'
 import pdb
 import os
 
+def data_id_name(id2e,id2r,dataset="FB15k",file="traindata"):
+	lines=[]
+	if os.path.exists("{}/{}_parse.txt".format(dataset,file)):
+		print("{}/{}_parse.txt has been generated!".format(dataset,file))
+		return
+	print("generating {}/{}_parse.txt".format(dataset,file))
+	with open("{}/{}.txt".format(dataset,file)) as f:
+		for _ in f.readlines():
+			_=_.split()
+			v="-"
+			if _[-1]=='0':
+				v="+"
+			lines.append(id2e[int(_[0])]+" "+id2e[int(_[2])]+" "+id2r[int(_[1])]+" "+v+'\n')
+	with open("{}/{}_parse.txt".format(dataset,file),'a') as f:
+		for _ in lines:
+			f.write(_)
+
 def name_id(dataset="FB15k",file="entity"): #transform entity or relation to index
 	name2id={}
 	id2name={}
@@ -12,10 +29,12 @@ def name_id(dataset="FB15k",file="entity"): #transform entity or relation to ind
 			id2name[int(_.split()[1].strip())]=_.split()[0].strip()
 	return name2id,id2name
 
-def data_index(e2id,r2id,dataset="FB15k",file="train"): #transform dataset to index
+def data_index(id2e,e2id,id2r,r2id,dataset="FB15k",file="train"): #transform dataset to index
 	data={}
 	inputE_index,output_index,inputR_index=[],[],[]
 	if os.path.exists("{}/{}data.txt".format(dataset,file)):
+		print("{} {}data has been generated!".format(dataset,file))
+		data_id_name(id2e,id2r,dataset,"{}data".format(file))
 		with open("{}/{}data.txt".format(dataset,file)) as f:
 			for _ in f.readlines():
 				_=_.split()
@@ -24,6 +43,7 @@ def data_index(e2id,r2id,dataset="FB15k",file="train"): #transform dataset to in
 				inputR_index.append([r])
 				output_index.append(v)
 		return inputE_index,inputR_index,output_index
+	print("generating {} {}data".format(dataset,file))
 	with open("{}/{}.txt".format(dataset,file)) as f:
 		lines=f.readlines()
 		length=len(lines)
@@ -53,16 +73,22 @@ def data_index(e2id,r2id,dataset="FB15k",file="train"): #transform dataset to in
 							length-=1
 							if length<=0:
 								break
-		print(length)	
+		# print(length)	
 	with open("{}/{}data.txt".format(dataset,file),'a') as f:
 		for h,r,t in data.keys():
 			f.write("{} {} {} {}\n".format(h,r,t,data[(h,r,t)]))
 			inputE_index.append([h,t])
 			inputR_index.append([r])
 			output_index.append(data[(h,r,t)])
+	data_id_name(id2e,id2r,dataset,"{}data".format(file))
 	return inputE_index,inputR_index,output_index
 
+
+
+
+
 if __name__=="__main__":
-	e2id=name_id()[0]
-	r2id=name_id(file="relation")[0]
-	data_index(e2id,r2id,dataset="FB15k",file="train")
+	e2id,id2e=name_id()
+	r2id,id2r=name_id(file="relation")
+	data_index(id2e,e2id,id2r,r2id,dataset="FB15k",file="train")
+	data_index(id2e,e2id,id2r,r2id,dataset="FB15k",file="test")
