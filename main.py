@@ -36,8 +36,8 @@ def get_train_batch(inputE,inputR,inputY,batchsize,shuffle=True):
 			y[i]=inputY[index]
 		yield e,r,y
 
-def test_model_top(e2id,r2id,id2e,id2r,model,session,epoch,top=10,flag="test on testdata for top{}"):
-	print(flag.format(top))
+def test_model_top(e2id,r2id,id2e,id2r,model,session,epoch,flag="test on testdata for top_k"):
+	print(flag)
 	e_test,r_test,y_test=get_test_top(id2e,e2id,id2r,r2id,file="test")
 	e_test=np.asarray(e_test,dtype="int32")
 	r_test=np.asarray(r_test,dtype="int32")
@@ -46,17 +46,28 @@ def test_model_top(e2id,r2id,id2e,id2r,model,session,epoch,top=10,flag="test on 
 	predictions=model.prediction.eval(feed_dict={model.inputE:e_test,model.inputR:r_test},session=session)
 	# loss=model.loss.eval(feed_dict={model.inputE:e_test,model.inputR:r_test,model.y_label:y_test})
 	# predictions=np.argmax(predictions,1)
-	top_k=np.argsort(predictions,0)[:top]
-	ans=0
-	for i in range(len(top_k)):
-		if y_test[top_k[i][0]]==0:
-			ans+=1
-
+	top_10=np.argsort(predictions,0)[:10]
+	top_3=np.argsort(predictions,0)[:3]
+	top_1=np.argsort(predictions,0)[:1]
+	ans_10,ans_3,ans_1=0,0,0
+	for i in range(len(top_10)):
+		if y_test[top_10[i][0]]==0:
+			ans_10+=1
+	for i in range(len(top_3)):
+		if y_test[top_3[i][0]]==0:
+			ans_3+=1
+	for i in range(len(top_1)):
+		if y_test[top_1[i][0]]==0:
+			ans_1+=1
 	# print("test loss:{}".format(loss))
-	print("top{} accuray:{}".format(top,float(ans)/float(top)))
+	print("top_10 accuray:{}".format(float(ans_10)/10.0))
+	print("top_3 accuray:{}".format(float(ans_3)/3.0))
+	print("top_1 accuray:{}".format(float(ans_1)/1.0))
 	with open("run_top.log",'a') as f:
 		# f.write("test loss:{}".format(loss)+'\n')
-		f.write("top{} accuray:{}".format(top,float(ans)/float(top))+'\n')
+		f.write("top_10 accuray:{}".format(float(ans_10)/10.0)+'\n')
+		f.write("top_3 accuray:{}".format(float(ans_3)/3.0)+'\n')
+		f.write("top_1 accuray:{}".format(float(ans_1)/1.0)+'\n')
 
 
 def test_model(e2id,r2id,id2e,id2r,model,session,epoch,flag="test on testdata"):

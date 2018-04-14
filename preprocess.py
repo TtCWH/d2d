@@ -29,7 +29,7 @@ def name_id(dataset="FB15k",file="entity"): #transform entity or relation to ind
 			id2name[int(_.split()[1].strip())]=_.split()[0].strip()
 	return name2id,id2name
 
-def data_index(id2e,e2id,id2r,r2id,dataset="FB15k",file="train"): #transform dataset to index
+def data_index(id2e,e2id,id2r,r2id,dataset="FB15k",file="train",traindata=None): #transform dataset to index
 	data={}
 	inputE_index,output_index,inputR_index=[],[],[]
 	if os.path.exists("{}/{}data.txt".format(dataset,file)):
@@ -52,7 +52,13 @@ def data_index(id2e,e2id,id2r,r2id,dataset="FB15k",file="train"): #transform dat
 			h=e2id[_[0].strip()]
 			r=r2id[_[2].strip()]
 			t=e2id[_[1].strip()]
-			data[(h,r,t)]=0
+			if traindata:
+				try:
+					a=traindata[(h,r,t)]
+				except:
+					data[(h,r,t)]=0
+			else:
+				data[(h,r,t)]=0
 		# pdb.set_trace()
 		while length>0:
 			for h,r,t in list(data.keys()):
@@ -81,7 +87,7 @@ def data_index(id2e,e2id,id2r,r2id,dataset="FB15k",file="train"): #transform dat
 			inputR_index.append([r])
 			output_index.append(data[(h,r,t)])
 	data_id_name(id2e,id2r,dataset,"{}data".format(file))
-	return inputE_index,inputR_index,output_index
+	return inputE_index,inputR_index,output_index,data
 
 
 def get_test_top(id2e,e2id,id2r,r2id,dataset="FB15k",file="test"):
@@ -109,21 +115,23 @@ def get_test_top(id2e,e2id,id2r,r2id,dataset="FB15k",file="test"):
 			t=e2id[_[1].strip()]
 			data[(h,r,t)]=0
 		# pdb.set_trace()
+		res={}
 		ks=list(data.keys())
 		for i in range(10):
 			h,r,t=ks[i]
+			res[ks[i]]=0
 			for temp_t in id2e.keys():
 				try:
 					a=data[(h,r,temp_t)]
 				except:
-					data[(h,r,temp_t)]=1
+					res[(h,r,temp_t)]=1
 		# print(length)	
 	with open("{}/{}_top_data.txt".format(dataset,file),'a') as f:
-		for h,r,t in data.keys():
-			f.write("{} {} {} {}\n".format(h,r,t,data[(h,r,t)]))
+		for h,r,t in res.keys():
+			f.write("{} {} {} {}\n".format(h,r,t,res[(h,r,t)]))
 			inputE_index.append([h,t])
 			inputR_index.append([r])
-			output_index.append(data[(h,r,t)])
+			output_index.append(res[(h,r,t)])
 	data_id_name(id2e,id2r,dataset,"{}_top_data".format(file))
 	return inputE_index,inputR_index,output_index
 
@@ -132,5 +140,5 @@ def get_test_top(id2e,e2id,id2r,r2id,dataset="FB15k",file="test"):
 if __name__=="__main__":
 	e2id,id2e=name_id()
 	r2id,id2r=name_id(file="relation")
-	data_index(id2e,e2id,id2r,r2id,dataset="FB15k",file="train")
-	data_index(id2e,e2id,id2r,r2id,dataset="FB15k",file="test")
+	traindata=data_index(id2e,e2id,id2r,r2id,dataset="FB15k",file="train")[-1]
+	data_index(id2e,e2id,id2r,r2id,dataset="FB15k",file="test",traindata=traindata)
