@@ -42,8 +42,8 @@ def test_model_top(e2id,r2id,id2e,id2r,model,session,epoch,top=10,flag="test on 
 	e_test=np.asarray(e_test,dtype="int32")
 	r_test=np.asarray(r_test,dtype="int32")
 	y_test=np.asarray(y_test,dtype="int32")
-	batch_tensor=np.zeros(y_test.shape,dtype="int32")
-	predictions=model.prediction.eval(feed_dict={model.inputE:e_test,model.inputR:r_test,model.batchsize:batch_tensor})
+	# batch_tensor=np.zeros(y_test.shape,dtype="int32")
+	predictions=model.prediction.eval(feed_dict={model.inputE:e_test,model.inputR:r_test},session=session)
 	# loss=model.loss.eval(feed_dict={model.inputE:e_test,model.inputR:r_test,model.y_label:y_test})
 	# predictions=np.argmax(predictions,1)
 	top_k=np.argsort(predictions,0)[:top]
@@ -65,7 +65,7 @@ def test_model(e2id,r2id,id2e,id2r,model,session,epoch,flag="test on testdata"):
 	e_test=np.asarray(e_test,dtype="int32")
 	r_test=np.asarray(r_test,dtype="int32")
 	y_test=np.asarray(y_test,dtype="int32")
-
+	# batch_tensor=np.zeros(y_test.shape,dtype="int32")
 	predictions=model.prediction.eval(feed_dict={model.inputE:e_test,model.inputR:r_test},session=session)
 	loss=model.loss.eval(feed_dict={model.inputE:e_test,model.inputR:r_test,model.y_label:y_test})
 	predictions=np.argmax(predictions,1)
@@ -102,9 +102,9 @@ def train_model(epochs=100,batchsize=50):
 			print("epoch:{}".format(epoch))
 			for e_data,r_data,y_data in get_train_batch(e_train,r_train,y_train,50):
 				# pdb.set_trace()
-				batch_tensor=np.zeros(y_data.shape,dtype="int32")
-				m.train_step.run(feed_dict={m.inputE:e_data,m.inputR:r_data,m.y_label:y_data,m.batchsize:batch_tensor})
-				value=m.loss.eval(feed_dict={m.inputE:e_data,m.inputR:r_data,m.y_label:y_data,m.batchsize:batch_tensor})
+				# batch_tensor=np.zeros(y_data.shape,dtype="int32")
+				m.train_step.run(feed_dict={m.inputE:e_data,m.inputR:r_data,m.y_label:y_data})
+				value=m.loss.eval(feed_dict={m.inputE:e_data,m.inputR:r_data,m.y_label:y_data})
 				# print('loss: {}'.format(value))
 			test_model(e2id,r2id,id2e,id2r,m_test,sess,epoch)
 
