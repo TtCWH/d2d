@@ -49,7 +49,7 @@ def test_model_top(e2id,r2id,id2e,id2r,model,session,epoch,top=10,flag="test on 
 	top_k=np.argsort(predictions,0)[:top]
 	ans=0
 	for i in range(len(top_k)):
-		if y_test[top_k[i]]==0:
+		if y_test[top_k[i][0]]==0:
 			ans+=1
 
 	# print("test loss:{}".format(loss))

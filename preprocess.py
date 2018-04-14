@@ -109,7 +109,9 @@ def get_test_top(id2e,e2id,id2r,r2id,dataset="FB15k",file="test"):
 			t=e2id[_[1].strip()]
 			data[(h,r,t)]=0
 		# pdb.set_trace()
-		for h,r,t in list(data.keys()):
+		ks=list(data.keys())
+		for i in range(10):
+			h,r,t=ks[i]
 			for temp_t in id2e.keys():
 				try:
 					a=data[(h,r,temp_t)]
