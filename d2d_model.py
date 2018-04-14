@@ -24,6 +24,7 @@ class D2dmodel(object):
 		num_steps=embedding_dim
 		self._inputE=tf.placeholder(tf.int32,[None,2])
 		self._inputR=tf.placeholder(tf.int32,[None,1])
+		self.batchsize=tf.placeholder(tf.int32,[None])
 		self._y_label=tf.placeholder(tf.int32,[None])
 
 		#embedding layer
@@ -33,8 +34,8 @@ class D2dmodel(object):
 			self.e_embedding_output=e_embedding_output=tf.nn.embedding_lookup(e_embedding,self._inputE)
 			self.r_embedding_output=r_embedding_output=tf.nn.embedding_lookup(r_embedding,self._inputR)
 		if is_training and keep_prob<1.0:
-			self.e_embedding_output=e_embedding_output=tf.nn.dropout(e_embedding_output,1-keep_prob)
-			self.r_embedding_output=r_embedding_output=tf.nn.dropout(r_embedding_output,1-keep_prob)
+			self.e_embedding_output=e_embedding_output=tf.nn.dropout(e_embedding_output,keep_prob)
+			self.r_embedding_output=r_embedding_output=tf.nn.dropout(r_embedding_output,keep_prob)
 		
 		#biLSTM layer
 		self.LSTM_inputE=LSTM_inputE=tf.split(tf.transpose(e_embedding_output,[0,2,1]),[1,1],2)
@@ -42,7 +43,7 @@ class D2dmodel(object):
 		self.LSTM_input=LSTM_input=tf.concat([LSTM_inputE[0],LSTM_inputR,LSTM_inputE[1]],2)
 		self.forward_LSTM=forward_LSTM=LSTMCell(lstm_dim,initializer=tf.random_uniform_initializer(-0.01, 0.01), forget_bias=0.0)
 		self.backward_LSTM=backward_LSTM=LSTMCell(lstm_dim,initializer=tf.random_uniform_initializer(-0.01, 0.01), forget_bias=0.0)
-		self.biLSTM_output=biLSTM_output=tf.nn.bidirectional_dynamic_rnn(forward_LSTM,backward_LSTM,LSTM_input,sequence_length=self._y_label,dtype=tf.float32)[0]
+		self.biLSTM_output=biLSTM_output=tf.nn.bidirectional_dynamic_rnn(forward_LSTM,backward_LSTM,LSTM_input,sequence_length=self.batchsize,dtype=tf.float32)[0]
 		
 		#softmax layer
 		softmax_input=tf.concat(biLSTM_output,2)

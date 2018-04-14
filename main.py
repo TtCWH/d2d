@@ -6,7 +6,7 @@ import pdb
 import time
 import numpy as np
 import tensorflow as tf
-from preprocess import data_index,name_id
+from preprocess import data_index,name_id,get_test_top
 from d2d_model import D2dmodel
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -36,15 +36,37 @@ def get_train_batch(inputE,inputR,inputY,batchsize,shuffle=True):
 			y[i]=inputY[index]
 		yield e,r,y
 
+def test_model_top(e2id,r2id,id2e,id2r,model,session,epoch,top=10,flag="test on testdata for top{}"):
+	print(flag.format(top))
+	e_test,r_test,y_test=get_test_top(id2e,e2id,id2r,r2id,file="test")
+	e_test=np.asarray(e_test,dtype="int32")
+	r_test=np.asarray(r_test,dtype="int32")
+	y_test=np.asarray(y_test,dtype="int32")
+	batch_tensor=np.zeros(y_test.shape,dtype="int32")
+	predictions=model.prediction.eval(feed_dict={model.inputE:e_test,model.inputR:r_test,model.batchsize:batch_tensor})
+	# loss=model.loss.eval(feed_dict={model.inputE:e_test,model.inputR:r_test,model.y_label:y_test})
+	# predictions=np.argmax(predictions,1)
+	top_k=np.argsort(predictions,0)[:top]
+	ans=0
+	for i in range(len(top_k)):
+		if y_test[top_k[i]]==0:
+			ans+=1
+
+	# print("test loss:{}".format(loss))
+	print("top{} accuray:{}".format(top,float(ans)/float(top)))
+	with open("run_top.log",'a') as f:
+		# f.write("test loss:{}".format(loss)+'\n')
+		f.write("top{} accuray:{}".format(top,float(ans)/float(top))+'\n')
+
 
 def test_model(e2id,r2id,id2e,id2r,model,session,epoch,flag="test on testdata"):
 	print(flag)
-	e_test,r_test,y_test=data_index(e2id,r2id,file="test")
+	e_test,r_test,y_test=data_index(id2e,e2id,id2r,r2id,file="test")
 	e_test=np.asarray(e_test,dtype="int32")
 	r_test=np.asarray(r_test,dtype="int32")
 	y_test=np.asarray(y_test,dtype="int32")
 
-	predictions=model.prediction.eval(feed_dict={model.inputE:e_test,model.inputR:r_test,model.y_label:y_test})
+	predictions=model.prediction.eval(feed_dict={model.inputE:e_test,model.inputR:r_test},session=session)
 	loss=model.loss.eval(feed_dict={model.inputE:e_test,model.inputR:r_test,model.y_label:y_test})
 	predictions=np.argmax(predictions,1)
 	ans=0
@@ -65,7 +87,7 @@ def train_model(epochs=100,batchsize=50):
 	"""
 	e2id,id2e=name_id()
 	r2id,id2r=name_id(file='relation')
-	e_train,r_train,y_train=data_index(e2id,r2id)
+	e_train,r_train,y_train=data_index(id2e,e2id,e2id,r2id)
 	e_train=np.asarray(e_train,dtype="int32")
 	r_train=np.asarray(r_train,dtype="int32")
 	y_train=np.asarray(y_train,dtype="int32")
@@ -74,14 +96,15 @@ def train_model(epochs=100,batchsize=50):
 		with tf.variable_scope("d2dmodel",reuse=None):
 			m=D2dmodel(entity_num=e_train.shape[0],relation_num=r_train.shape[0])
 		with tf.variable_scope("d2dmodel",reuse=True):
-			m_test=D2dmodel(entity_num=e_train.shape[0],relation_num=r_train.shape[0],is_training=False)
+			m_test=D2dmodel(entity_num=e_train.shape[0],relation_num=r_train.shape[0],is_training=False,keep_prob=1.0)
 		sess.run(tf.global_variables_initializer())
 		for epoch in range(epochs):
 			print("epoch:{}".format(epoch))
 			for e_data,r_data,y_data in get_train_batch(e_train,r_train,y_train,50):
 				# pdb.set_trace()
-				m.train_step.run(feed_dict={m.inputE:e_data,m.inputR:r_data,m.y_label:y_data})
-				value=m.loss.eval(feed_dict={m.inputE:e_data,m.inputR:r_data,m.y_label:y_data})
+				batch_tensor=np.zeros(y_data.shape,dtype="int32")
+				m.train_step.run(feed_dict={m.inputE:e_data,m.inputR:r_data,m.y_label:y_data,m.batchsize:batch_tensor})
+				value=m.loss.eval(feed_dict={m.inputE:e_data,m.inputR:r_data,m.y_label:y_data,m.batchsize:batch_tensor})
 				# print('loss: {}'.format(value))
 			test_model(e2id,r2id,id2e,id2r,m_test,sess,epoch)
 
