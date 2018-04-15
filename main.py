@@ -63,7 +63,7 @@ def test_model_top(e2id,r2id,id2e,id2r,model,session,epoch,flag="test on testdat
 	print("top_10 accuray:{}".format(float(ans_10)/10.0))
 	print("top_3 accuray:{}".format(float(ans_3)/3.0))
 	print("top_1 accuray:{}".format(float(ans_1)/1.0))
-	with open("run_top.log",'a') as f:
+	with open("run.log",'a') as f:
 		# f.write("test loss:{}".format(loss)+'\n')
 		f.write("top_10 accuray:{}".format(float(ans_10)/10.0)+'\n')
 		f.write("top_3 accuray:{}".format(float(ans_3)/3.0)+'\n')
@@ -118,7 +118,7 @@ def train_model(epochs=100,batchsize=50):
 				value=m.loss.eval(feed_dict={m.inputE:e_data,m.inputR:r_data,m.y_label:y_data})
 				# print('loss: {}'.format(value))
 			test_model(e2id,r2id,id2e,id2r,m_test,sess,epoch)
-			test_model_top(e2id,r2id,id2e,id2r,model,session,epoch)
+			test_model_top(e2id,r2id,id2e,id2r,m_test,sess,epoch)
 
 
 if __name__=="__main__":
